@@ -2,13 +2,14 @@ import { useNavigate } from "react-router-dom";
 import styles from "./TicketForm.module.css";
 import { useEffect, useState, type SubmitEvent } from "react";
 import type {
-    Ticket,
+  Ticket,
   TicketCategory,
   TicketPriority,
   User,
 } from "../../types/ticket.types";
 import axios from "axios";
 import type { ApiResponse } from "../../../../shared/types/api.types";
+import { useAuth } from "../../../auth/context/AuthContext";
 
 export interface CreateTicketData {
   title: string;
@@ -47,6 +48,7 @@ function validate(form: {
 
 export function TicketCreateForm() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // 🔴 TODO:
   // 1. set up controlled component state for: title, description, priority, category,
@@ -59,8 +61,8 @@ export function TicketCreateForm() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TicketPriority>("low");
   const [category, setCategory] = useState<TicketCategory>("bug");
-  const [reporterName, setReporterName] = useState("");
-  const [reporterEmail, setReporterEmail] = useState("");
+  const [reporterName, setReporterName] = useState(user?.displayName ?? "");
+  const [reporterEmail, setReporterEmail] = useState(user?.email ?? "");
   const [assigneeId, setAssigneeId] = useState("");
 
   const [users, setUsers] = useState<User[]>([]);
@@ -77,15 +79,21 @@ export function TicketCreateForm() {
         axios.isAxiosError(error);
       }
     }
+    fetchUsers();
   }, []);
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
-    if(submitting) return;
+    if (submitting) return;
 
-    const errors = validate({title, description, reporterName, reporterEmail});
+    const errors = validate({
+      title,
+      description,
+      reporterName,
+      reporterEmail,
+    });
     setFieldErrors(errors);
-    if(Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) return;
 
     const payload: CreateTicketData = {
       title: title.trim(),
@@ -94,16 +102,22 @@ export function TicketCreateForm() {
       category,
       reporterName: reporterName.trim(),
       reporterEmail: reporterEmail.trim(),
-      assigneeId: assigneeId? Number(assigneeId) : null,
+      assigneeId: assigneeId ? Number(assigneeId) : null,
     };
 
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const result = await axios.post<ApiResponse<Ticket>>(`${url}/tickets`, payload);
+      const result = await axios.post<ApiResponse<Ticket>>(
+        `${url}/tickets`,
+        payload,
+      );
       navigate(`/tickets/${result.data.data.id}`);
-    } catch(error) {
-      setSubmitError((axios.isAxiosError(error) && error.response?.data.message) || "Failed to create ticket!");
+    } catch (error) {
+      setSubmitError(
+        (axios.isAxiosError(error) && error.response?.data.message) ||
+          "Failed to create ticket!",
+      );
       setSubmitting(false);
     }
   }
@@ -225,7 +239,11 @@ export function TicketCreateForm() {
         {submitError && <span className={styles.error}>{submitError}</span>}
 
         <div className={styles.actions}>
-          <button type="submit" className={styles.submitButton} disabled={submitting}>
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={submitting}
+          >
             {submitting ? "Saving..." : "Create Ticket"}
           </button>
           <button
