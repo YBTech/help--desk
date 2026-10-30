@@ -1,4 +1,4 @@
-import * as statsRepository from './stats.repository.js';
+import * as statsRepository from "./stats.repository.js";
 
 export const getStats = async () => {
   const [
@@ -14,12 +14,12 @@ export const getStats = async () => {
   ]);
 
   const statusMap: Record<string, number> = {};
-  statusCounts.forEach(item => {
+  statusCounts.forEach((item) => {
     statusMap[item.status] = item.count;
   });
 
   const priorityMap: Record<string, number> = {};
-  priorityCounts.forEach(item => {
+  priorityCounts.forEach((item) => {
     priorityMap[item.priority] = item.count;
   });
 
@@ -27,7 +27,7 @@ export const getStats = async () => {
     success: true,
     data: {
       totalTickets: totalCount,
-      openTickets: statusMap['open'] || 0,
+      openTickets: statusMap["open"] || 0,
       avgResolutionTimeSeconds: Math.round(avgResolutionTime),
       slaBreachCount,
       statusCounts: statusMap,
@@ -37,8 +37,8 @@ export const getStats = async () => {
 };
 
 // 🔴 TODO: Accept a limit and pass it to the repository (it already takes one, default 5)
-export const getRecent = async () => {
-  const tickets = await statsRepository.getRecentTickets();
+export const getRecent = async (limit: number = 5) => {
+  const tickets = await statsRepository.getRecentTickets(limit);
 
   return {
     success: true,

@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import * as ticketService from './ticket.service.js';
-import { ValidationError, NotImplementedError } from '../../shared/errors.js';
+import { Request, Response, NextFunction } from "express";
+import * as ticketService from "./ticket.service.js";
+import { ValidationError, NotImplementedError } from "../../shared/errors.js";
 import {
   TicketFilters,
   CreateTicketDto,
@@ -8,13 +8,13 @@ import {
   STATUSES,
   PRIORITIES,
   CATEGORIES,
-} from './ticket.types.js';
+} from "./ticket.types.js";
 
 // '/tickets/abc' -> 400, instead of querying the database with NaN
 const parseId = (raw: string): number => {
   const id = Number(raw);
   if (!Number.isInteger(id) || id < 1) {
-    throw new ValidationError('Ticket id must be a positive integer');
+    throw new ValidationError("Ticket id must be a positive integer");
   }
   return id;
 };
@@ -29,65 +29,65 @@ function validateTicketBody(
   body: any,
   partial: boolean,
 ): CreateTicketDto | UpdateTicketDto {
-  if (typeof body !== 'object' || body === null) {
-    throw new ValidationError('Request body is required');
+  if (typeof body !== "object" || body === null) {
+    throw new ValidationError("Request body is required");
   }
 
   const check = (field: string) => !partial || body[field] !== undefined;
 
   if (
-    check('title') &&
-    (typeof body.title !== 'string' || body.title.trim().length < 5)
+    check("title") &&
+    (typeof body.title !== "string" || body.title.trim().length < 5)
   ) {
-    throw new ValidationError('Title must be at least 5 characters');
+    throw new ValidationError("Title must be at least 5 characters");
   }
   if (
-    check('description') &&
-    (typeof body.description !== 'string' || body.description.trim() === '')
+    check("description") &&
+    (typeof body.description !== "string" || body.description.trim() === "")
   ) {
-    throw new ValidationError('Description is required');
+    throw new ValidationError("Description is required");
   }
-  if (check('priority') && !PRIORITIES.includes(body.priority)) {
+  if (check("priority") && !PRIORITIES.includes(body.priority)) {
     throw new ValidationError(
-      `Priority must be one of: ${PRIORITIES.join(', ')}`,
+      `Priority must be one of: ${PRIORITIES.join(", ")}`,
     );
   }
-  if (check('category') && !CATEGORIES.includes(body.category)) {
+  if (check("category") && !CATEGORIES.includes(body.category)) {
     throw new ValidationError(
-      `Category must be one of: ${CATEGORIES.join(', ')}`,
+      `Category must be one of: ${CATEGORIES.join(", ")}`,
     );
   }
   if (
-    check('reporterName') &&
-    (typeof body.reporterName !== 'string' || body.reporterName.trim() === '')
+    check("reporterName") &&
+    (typeof body.reporterName !== "string" || body.reporterName.trim() === "")
   ) {
-    throw new ValidationError('Reporter name is required');
+    throw new ValidationError("Reporter name is required");
   }
   if (
-    check('reporterEmail') &&
-    (typeof body.reporterEmail !== 'string' ||
+    check("reporterEmail") &&
+    (typeof body.reporterEmail !== "string" ||
       !/^\S+@\S+\.\S+$/.test(body.reporterEmail))
   ) {
-    throw new ValidationError('Invalid email format');
+    throw new ValidationError("Invalid email format");
   }
   if (
     body.assigneeId !== undefined &&
     body.assigneeId !== null &&
     !Number.isInteger(body.assigneeId)
   ) {
-    throw new ValidationError('assigneeId must be a whole number or null');
+    throw new ValidationError("assigneeId must be a whole number or null");
   }
 
   // Copy only the known fields so unexpected keys never reach the database
   const input: UpdateTicketDto = {};
   const fields: (keyof UpdateTicketDto)[] = [
-    'title',
-    'description',
-    'priority',
-    'category',
-    'reporterName',
-    'reporterEmail',
-    'assigneeId',
+    "title",
+    "description",
+    "priority",
+    "category",
+    "reporterName",
+    "reporterEmail",
+    "assigneeId",
   ];
   for (const field of fields) {
     if (body[field] !== undefined) {
@@ -97,7 +97,11 @@ function validateTicketBody(
   return input as CreateTicketDto | UpdateTicketDto;
 }
 
-export const getAllTickets = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllTickets = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const filters: TicketFilters = {
       page: req.query.page ? parseInt(req.query.page as string) : undefined,
@@ -106,7 +110,9 @@ export const getAllTickets = async (req: Request, res: Response, next: NextFunct
       status: req.query.status as any,
       priority: req.query.priority as any,
       category: req.query.category as any,
-      assigneeId: req.query.assigneeId ? parseInt(req.query.assigneeId as string) : undefined,
+      assigneeId: req.query.assigneeId
+        ? parseInt(req.query.assigneeId as string)
+        : undefined,
       sortBy: req.query.sortBy as any,
       sortOrder: req.query.sortOrder as any,
     };
@@ -118,7 +124,11 @@ export const getAllTickets = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const getTicketById = async (req: Request, res: Response, next: NextFunction) => {
+export const getTicketById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = parseId(req.params.id);
     const result = await ticketService.getTicketById(id);
@@ -128,37 +138,68 @@ export const getTicketById = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const createTicket = async (req: Request, res: Response, next: NextFunction) => {
+export const createTicket = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // 🔴 TODO: Validate req.body with validateTicketBody (create mode), create the ticket using the service, return it with status 201
-    throw new NotImplementedError('TODO: Implement createTicket in ticket.controller.ts');
+    const data = validateTicketBody(req.body, false);
+    const result = await ticketService.createTicket(data);
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 };
 
-export const updateTicket = async (req: Request, res: Response, next: NextFunction) => {
+export const updateTicket = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // 🔴 TODO: Get the ticket ID from params with parseId, validate req.body with validateTicketBody (partial mode), update using the service, return the result
-    throw new NotImplementedError('TODO: Implement updateTicket in ticket.controller.ts');
+    const id = parseId(req.params.id);
+    const data = validateTicketBody(req.body, true);
+    const result = await ticketService.updateTicket(id, data);
+    res.json(result);
   } catch (error) {
     next(error);
   }
 };
 
-export const updateTicketStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const updateTicketStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // 🔴 TODO: Get the ticket ID from params with parseId, read `status` from req.body and make sure it is one of STATUSES (otherwise throw a ValidationError), update using the service, return the result
-    throw new NotImplementedError('TODO: Implement updateTicketStatus in ticket.controller.ts');
+    const id = parseId(req.params.id);
+    const status = req.body?.status;
+    if (!STATUSES.includes(status)) {
+      throw new ValidationError(
+        `Status must be one of: ${STATUSES.join(", ")}`,
+      );
+    }
+    const result = await ticketService.updateTicketStatus(id, status);
+    res.json(result);
   } catch (error) {
     next(error);
   }
 };
 
-export const deleteTicket = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteTicket = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // 🔴 TODO: Get the ticket ID from params with parseId, delete using the service, return the result
-    throw new NotImplementedError('TODO: Implement deleteTicket in ticket.controller.ts');
+    const id = parseId(req.params.id);
+    const result = await ticketService.deleteTicket(id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
