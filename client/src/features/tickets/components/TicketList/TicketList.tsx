@@ -7,6 +7,7 @@ import { TicketFilter } from "../TicketFilter/TicketFilter";
 import type { Ticket } from "../../types/ticket.types";
 import type { PaginatedResponse } from "../../../../shared/types/api.types";
 import styles from "./TicketList.module.css";
+import { useDebouncedValue } from "../../../../shared/hooks/useDebouncedValue";
 
 const API_URL = "http://localhost:4000/api";
 
@@ -20,9 +21,13 @@ export function TicketList() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
 
-  const [response, setResponse] = useState<PaginatedResponse<Ticket> | null>(null);
+  const [response, setResponse] = useState<PaginatedResponse<Ticket> | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const debounceSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -32,6 +37,22 @@ export function TicketList() {
         // 🔴 TODO 1: GET `${API_URL}/tickets` with axios, passing the filters and page as query params
         // (search, status, priority, category, assigneeId, sortBy, sortOrder, page, limit: 10).
         // Then store response.data with setResponse.
+        const params: Record<string, string | number> = {
+          sortBy,
+          sortOrder,
+          page,
+          limit: 10,
+        };
+        if (debounceSearch.trim()) params.search = debounceSearch.trim();
+        if (status) params.status = status;
+        if (priority) params.priority = priority;
+        if (category) params.category = category;
+        if (assigneeId) params.assigneeId = assigneeId;
+        const result = await axios.get<PaginatedResponse<Ticket>>(
+          `${API_URL}/tickets`,
+          params,
+        );
+        setResponse(result.data);
       } catch (err: any) {
         setError(err.response?.data?.message || "Failed to fetch tickets");
       } finally {
@@ -91,31 +112,20 @@ export function TicketList() {
           <div className={styles.ticketGrid}>
             {/* 🔴 TODO 2: if response.data is empty show "No tickets found", otherwise render one TicketCard
                 for each ticket (give it a key and pass the ticket) */}
-            <TicketCard
-              ticket={{
-                id: 1,
-                title: "title",
-                description: "description",
-                status: "open",
-                priority: "urgent",
-                category: "bug",
-                reporterName: "reporter name",
-                reporterEmail: "reporter email",
-                assigneeId: null,
-                slaDeadline: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-                resolvedAt: null,
-                closedAt: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }}
-            />
+            {response.data.length === 0 ? (
+              <p className={styles.noTickets}>No tickets found!</p>
+            ) : (
+              response.data.map((ticket) => (
+                <TicketCard key={ticket.id} ticket={ticket} />
+              ))
+            )}
           </div>
 
           {response.pagination.totalPages > 1 && (
             <div className={styles.pagination}>
               {/* 🔴 TODO 3: Make Previous go to the previous page and Next go to the next page */}
               <button
-                onClick={() => {}}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className={styles.pageButton}
               >
@@ -125,7 +135,11 @@ export function TicketList() {
                 Page {page} of {response.pagination.totalPages}
               </span>
               <button
-                onClick={() => {}}
+                onClick={() =>
+                  setPage((p) =>
+                    Math.min(response.pagination.totalPages, p + 1),
+                  )
+                }
                 disabled={page === response.pagination.totalPages}
                 className={styles.pageButton}
               >
