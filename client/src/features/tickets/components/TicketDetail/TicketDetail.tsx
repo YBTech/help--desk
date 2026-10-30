@@ -1,15 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { LoadingSpinner } from '../../../../shared/components/LoadingSpinner/LoadingSpinner';
-import { StatusBadge, PriorityBadge } from '../../../../shared/components/Badges/Badges';
-import { SlaCountdown } from '../SlaCountdown/SlaCountdown';
-import { formatDate } from '../../../../shared/utils/formatters';
-import type { Ticket } from '../../types/ticket.types';
-import type { ApiResponse } from '../../../../shared/types/api.types';
-import styles from './TicketDetail.module.css';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { LoadingSpinner } from "../../../../shared/components/LoadingSpinner/LoadingSpinner";
+import {
+  StatusBadge,
+  PriorityBadge,
+} from "../../../../shared/components/Badges/Badges";
+import { SlaCountdown } from "../SlaCountdown/SlaCountdown";
+import { formatDate } from "../../../../shared/utils/formatters";
+import type { Ticket } from "../../types/ticket.types";
+import type { ApiResponse } from "../../../../shared/types/api.types";
+import styles from "./TicketDetail.module.css";
+import { useAuth } from "../../../auth/context/AuthContext";
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = "http://localhost:4000/api";
 
 export function TicketDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,13 +23,17 @@ export function TicketDetail() {
   const [error, setError] = useState<string | null>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const response = await axios.get<ApiResponse<Ticket>>(`${API_URL}/tickets/${id}`);
+        const response = await axios.get<ApiResponse<Ticket>>(
+          `${API_URL}/tickets/${id}`,
+        );
         setTicket(response.data.data);
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to fetch ticket');
+        setError(err.response?.data?.message || "Failed to fetch ticket");
       } finally {
         setLoading(false);
       }
@@ -44,23 +52,27 @@ export function TicketDetail() {
     if (!ticket) return;
 
     try {
-      await axios.patch(`${API_URL}/tickets/${ticket.id}/status`, { status: newStatus });
-      const response = await axios.get<ApiResponse<Ticket>>(`${API_URL}/tickets/${ticket.id}`);
+      await axios.patch(`${API_URL}/tickets/${ticket.id}/status`, {
+        status: newStatus,
+      });
+      const response = await axios.get<ApiResponse<Ticket>>(
+        `${API_URL}/tickets/${ticket.id}`,
+      );
       setTicket(response.data.data);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update status');
+      alert(err.response?.data?.message || "Failed to update status");
     }
   };
 
   const handleDelete = async () => {
     if (!ticket) return;
-    if (!confirm('Are you sure you want to delete this ticket?')) return;
+    if (!confirm("Are you sure you want to delete this ticket?")) return;
 
     try {
       await axios.delete(`${API_URL}/tickets/${ticket.id}`);
-      navigate('/tickets');
+      navigate("/tickets");
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete ticket');
+      alert(err.response?.data?.message || "Failed to delete ticket");
     }
   };
 
@@ -68,19 +80,23 @@ export function TicketDetail() {
   if (error) return <div className={styles.error}>{error}</div>;
   if (!ticket) return <div className={styles.error}>Ticket not found</div>;
 
-  const canStartWorking = ticket.status === 'open';
-  const canResolve = ticket.status === 'in_progress';
-  const canClose = ticket.status === 'resolved';
-  const canReopen = ticket.status === 'closed';
+  const canStartWorking = ticket.status === "open";
+  const canResolve = ticket.status === "in_progress";
+  const canEdit = user !== null && user.role !== "viewer";
+  const canDelete = user?.role === "admin";
+  const canClose = ticket.status === "resolved";
+  const canReopen = ticket.status === "closed";
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>{ticket.title}</h1>
         <div className={styles.actions}>
-          <button onClick={handleDelete} className={styles.deleteButton}>
-            Delete
-          </button>
+          {canDelete && (
+            <button onClick={handleDelete} className={styles.deleteButton}>
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -98,30 +114,38 @@ export function TicketDetail() {
             </div>
             <div className={styles.field}>
               <span className={styles.label}>Category:</span>
-              <span className={styles.value}>{ticket.category.replace('_', ' ')}</span>
+              <span className={styles.value}>
+                {ticket.category.replace("_", " ")}
+              </span>
             </div>
             <div className={styles.field}>
               <span className={styles.label}>Reporter:</span>
-              <span className={styles.value}>{ticket.reporterName} ({ticket.reporterEmail})</span>
+              <span className={styles.value}>
+                {ticket.reporterName} ({ticket.reporterEmail})
+              </span>
             </div>
             <div className={styles.field}>
               <span className={styles.label}>Assignee:</span>
               <span className={styles.value}>
-                {ticket.assignee ? ticket.assignee.displayName : 'Unassigned'}
+                {ticket.assignee ? ticket.assignee.displayName : "Unassigned"}
               </span>
             </div>
             <div className={styles.field}>
               <span className={styles.label}>Created:</span>
-              <span className={styles.value}>{formatDate(ticket.createdAt)}</span>
+              <span className={styles.value}>
+                {formatDate(ticket.createdAt)}
+              </span>
             </div>
             <div className={styles.field}>
               <span className={styles.label}>Updated:</span>
-              <span className={styles.value}>{formatDate(ticket.updatedAt)}</span>
+              <span className={styles.value}>
+                {formatDate(ticket.updatedAt)}
+              </span>
             </div>
             <div className={styles.field}>
               <span className={styles.label}>SLA Remaining:</span>
-              <SlaCountdown 
-                deadline={ticket.slaDeadline} 
+              <SlaCountdown
+                deadline={ticket.slaDeadline}
                 resolvedAt={ticket.resolvedAt}
                 closedAt={ticket.closedAt}
               />
@@ -136,47 +160,50 @@ export function TicketDetail() {
 
         <div className={styles.section}>
           <h2>Actions</h2>
-          <div className={styles.statusActions}>
-            {canStartWorking && (
-              <button
-                ref={firstButtonRef}
-                onClick={() => handleStatusChange('in_progress')}
-                className={styles.actionButton}
-              >
-                Start Working
-              </button>
-            )}
-            {canResolve && (
-              <button
-                ref={firstButtonRef}
-                onClick={() => handleStatusChange('resolved')}
-                className={styles.actionButton}
-              >
-                Resolve
-              </button>
-            )}
-            {canClose && (
-              <button
-                ref={firstButtonRef}
-                onClick={() => handleStatusChange('closed')}
-                className={styles.actionButton}
-              >
-                Close
-              </button>
-            )}
-            {canReopen && (
-              <button
-                ref={firstButtonRef}
-                onClick={() => handleStatusChange('open')}
-                className={styles.actionButton}
-              >
-                Reopen
-              </button>
-            )}
-          </div>
+          {!canEdit ? (
+            <p>Login in as an agent or admin to update this ticket!</p>
+          ) : (
+            <div className={styles.statusActions}>
+              {canStartWorking && (
+                <button
+                  ref={firstButtonRef}
+                  onClick={() => handleStatusChange("in_progress")}
+                  className={styles.actionButton}
+                >
+                  Start Working
+                </button>
+              )}
+              {canResolve && (
+                <button
+                  ref={firstButtonRef}
+                  onClick={() => handleStatusChange("resolved")}
+                  className={styles.actionButton}
+                >
+                  Resolve
+                </button>
+              )}
+              {canClose && (
+                <button
+                  ref={firstButtonRef}
+                  onClick={() => handleStatusChange("closed")}
+                  className={styles.actionButton}
+                >
+                  Close
+                </button>
+              )}
+              {canReopen && (
+                <button
+                  ref={firstButtonRef}
+                  onClick={() => handleStatusChange("open")}
+                  className={styles.actionButton}
+                >
+                  Reopen
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
